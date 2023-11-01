@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.min.css"
+        />
+    </head>
+    <body>
+        <div style="display: flex; justify-content: center; height: 40vh; align-items: center">
+            <div class="autoComplete_wrapper">
+                <input
+                    id="autoComplete"
+                    type="search"
+                    dir="ltr"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocomplete="off"
+                    autocapitalize="off"
+                />
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js"></script>
+        <script>
+            const autoCompleteJS = new autoComplete({
+                placeHolder: 'Введите текст...',
+                data: {
+                    src: async word => {
+                        try {
+                            document.getElementById('autoComplete').setAttribute('placeholder', 'Загрузка...')
+                            const source = await fetch('http://127.0.0.1:5000/autocomplete?word=' + word)
+                            const data = await source.json()
+                            document
+                                .getElementById('autoComplete')
+                                .setAttribute('placeholder', autoCompleteJS.placeHolder)
+                            return data
+                        } catch (err) {
+                            console.error(err)
+                            return err
+                        }
+                    }
+                },
+                resultItem: {
+                    highlight: true
+                },
+                events: {
+                    input: {
+                        selection: event => {
+                            autoCompleteJS.input.value = event.detail.selection.value
+                        }
+                    }
+                }
+            })
+        </script>
+    </body>
+</html>
