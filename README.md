@@ -1,3 +1,3 @@
-<div style="background-color: #de99de; padding: 20px;">
-  <p>homework on databases for 2 years.</p>
-</div>
+<a href="https://github.com/KatyaGotskina/github-readme-stats">
+  <img height="200" align="center" src="https://github-readme-stats.vercel.app/api?username=KatyaGotskina" />
+</a>
