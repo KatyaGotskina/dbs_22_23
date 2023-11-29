@@ -44,15 +44,20 @@ db.movieDetails.find({
 })
 
 // 8. Для фильмов со страной Japan вывести топ 9 режиссеров с наибольшим количеством номинаций
-
 db.movieDetails.aggregate([
     { $match: { countries: { $in: ['Japan'] } } },
-    { $group: {  }},
+    { $group: { _id: "$director", totalNom: {$sum: "$awards.nominations"}}},
+    {$sort: {totalNom: -1}},
     { $limit: 9 }
 ])
 
+
 // 9. Для фильмов с рейтингом PG вывести топ 9 сценаристов с наибольшим средним tomato рейтингом
 db.movieDetails.aggregate([
-    { $match: { countries: { $in: ['Japan'] } } },
+    { $match: { 'rated': 'PG', 'tomato.rating': {$ne: null} } },
+    { $unwind: '$writers'},
+    { $group: {_id: "$writers", middleReit: {$avg: "$tomato.rating"}} }, //films: { $push: '$$ROOT' }
+    {$sort: {middleReit: -1}},
+    { $limit: 9 }
 ])
 
