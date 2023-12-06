@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  postgresql-slave:
+    image: bitnami/postgresql:15.4.0
+    ports:
+      - ${SLAVE_PORT}:5432
+    environment:
+      POSTGRESQL_MASTER_HOST: ${MASTER_HOST}
+      POSTGRESQL_PASSWORD: 123 # может быть любым
+      POSTGRESQL_MASTER_PORT_NUMBER: ${MASTER_PORT}
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_REPLICATION_USER: ${REPL_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${REPL_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

