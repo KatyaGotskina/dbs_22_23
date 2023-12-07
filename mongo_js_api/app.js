@@ -18,26 +18,33 @@ app.get('/', (_, res) => {
     res.send('')
 })
 
-app.get('/movies', async (_, res) => {
+app.get('/couriers', async (_, res) => {
     try {
-        const movies = await db
-            .collection('movieDetails')
-            .find({}, { limit: 10, sort: { _id: -1 } })
+        const couriers = await db
+            .collection('couriers')
+            .find({}, { limit: 10 })
             .toArray()
 
-        res.json(movies)
+        res.json(couriers)
     } catch (err) {
         console.log(err)
         res.sendStatus(400)
     }
 })
 
-app.post('/movies/create', async (req, res) => {
+app.post('/courier/create', async (req, res) => {
     try {
-        const { title, year, runtime, countries, genres, director, writers, actors } = req.body
+        let { vehicle, working_days, name, age, orders } = req.body
+        age = new Date(age)
+        orders.forEach(order => {
+            order.time_of_creation = new Date(order.time_of_creation)
+            order.delivered = new Date(order.delivered)
+            }
+        )
+        console.log({ vehicle, working_days, name, age, orders })
         const { insertedId } = await db
-            .collection('movieDetails')
-            .insertOne({ title, year, runtime, countries, genres, director, writers, actors })
+            .collection('couriers')
+            .insertOne({ vehicle, working_days, name, age, orders })
 
         res.json({ id: insertedId })
     } catch (err) {
@@ -46,14 +53,20 @@ app.post('/movies/create', async (req, res) => {
     }
 })
 
-app.post('/movies/update', async (req, res) => {
+app.post('/courier/update', async (req, res) => {
     try {
-        const { id, title, year, runtime, countries, genres, director, writers, actors } = req.body
+        let { vehicle, working_days, name, age, orders } = req.body
+        age = new Date(age)
+        orders.forEach(order => {
+            order.time_of_creation = new Date(order.time_of_creation)
+            order.delivered = new Date(order.delivered)
+            }
+        )
         const result = await db
-            .collection('movieDetails')
+            .collection('couriers')
             .updateOne(
                 { _id: new ObjectId(id) },
-                { $set: { title, year, runtime, countries, genres, director, writers, actors } }
+                { $set: { vehicle, working_days, name, age, orders } }
             )
 
         if (result.matchedCount === 0) {
@@ -67,10 +80,10 @@ app.post('/movies/update', async (req, res) => {
     }
 })
 
-app.delete('/movies/delete', async (req, res) => {
+app.delete('/courier/delete', async (req, res) => {
     try {
         const { id } = req.body
-        const { deletedCount } = await db.collection('movieDetails').deleteOne({ _id: new ObjectId(id) })
+        const { deletedCount } = await db.collection('couriers').deleteOne({ _id: new ObjectId(id) })
 
         if (deletedCount === 0) {
             res.sendStatus(404)
@@ -89,8 +102,8 @@ app.listen(appPort, () => {
 
 
 //примеры апдейтов в mongo
-db.movieDetails.updateOne({ title: 'some_title' }, { $set: {runtime: 104, 'imdb.rating': 8.3 } })
-db.movieDetails.updateOne({ title: 'some_title' }, { $set: {'actors.0': 'some_new_actor' } })
-db.movieDetails.updateOne({ title: 'some_title', actors: 'some_new_actor' }, { $set: {'actors.$': 'new_actor' } })
-db.movieDetails.updateOne({ title: 'some_title', 'producres.name': 'Walt Disney' }), {$set: {'producers.$.country': 'USA'}}
+// db.movieDetails.updateOne({ title: 'some_title' }, { $set: {runtime: 104, 'imdb.rating': 8.3 } })
+// db.movieDetails.updateOne({ title: 'some_title' }, { $set: {'actors.0': 'some_new_actor' } })
+// db.movieDetails.updateOne({ title: 'some_title', actors: 'some_new_actor' }, { $set: {'actors.$': 'new_actor' } })
+// db.movieDetails.updateOne({ title: 'some_title', 'producres.name': 'Walt Disney' }), {$set: {'producers.$.country': 'USA'}}
 
