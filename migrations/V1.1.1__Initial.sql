@@ -63,13 +63,3 @@ create  table delivery_to_courier
 
 insert  into delivery_to_courier(delivery_id, courier_id)
 values (1, 1), (1, 2), (2, 2), (2, 3), (3, 4), (1, 4), (5, 4), (5, 1), (4, 3), (3, 6);
-
-
-select brand, address, opening_time, closing_time, name, age, working_days, 
-vehicle, urgency, time_of_creation, delivered, size, package, comment
-from delivery d
-	join delivery_to_courier dc on d.id = dc.delivery_id
-	join courier c on c.id = dc.courier_id
-	JOIN orders o ON o.courier_id = c.id;
-
-select change_work_days();

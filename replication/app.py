@@ -8,28 +8,43 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 
-
 load_dotenv()
-pg_connection_parameters = {
+connection_param_master = {
     'host': os.getenv('POSTGRES_HOST'),
-    'port': os.getenv('POSTGRES_PORT'),
+    'port': os.getenv('MASTER_PORT'),
     'database': os.getenv('POSTGRES_DB'),
     'user': os.getenv('POSTGRES_USER'),
     'password': os.getenv('POSTGRES_PASSWORD')
 }
 
+connection_param_slave = {
+    'host': os.getenv('POSTGRES_HOST'),
+    'port': os.getenv('SLAVE_PORT'),
+    'database': os.getenv('POSTGRES_DB'),
+    'user': os.getenv('POSTGRES_USER'),
+    'password': os.getenv('POSTGRES_PASSWORD')
+}
 
-for key in pg_connection_parameters:
-    if pg_connection_parameters[key] is None:
+for key in connection_param_master:
+    if connection_param_master[key] is None:
+        logging.error(f'{key} is None')
+
+for key in connection_param_slave:
+    if connection_param_slave[key] is None:
         logging.error(f'{key} is None')
 
 
-def create_pg_connection():
-    conn = psycopg2.connect(**pg_connection_parameters,
+def create_connection_master():
+    conn = psycopg2.connect(**connection_param_master,
                             cursor_factory=RealDictCursor)
     conn.autocommit = True
     return conn
 
+def create_connection_slave():
+    conn = psycopg2.connect(**connection_param_slave,
+                            cursor_factory=RealDictCursor)
+    conn.autocommit = True
+    return conn
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
@@ -53,7 +68,7 @@ def get_delivery():
         left join get_orders gor on gor.id = c.id
         group by d.id;
         """
-        with create_pg_connection() as conn, conn.cursor() as cur:
+        with create_connection_slave() as conn, conn.cursor() as cur:
             cur.execute(query)
             deliveries = cur.fetchall()
             for delivery in deliveries:
@@ -69,21 +84,25 @@ def get_delivery():
 def create_delivery():
     try:
         body = request.json
-        opening_time = Literal(datetime.strptime(body['opening_time'], '%H:%M:%S').time())
-        closing_time = Literal(datetime.strptime(body['closing_time'], '%H:%M:%S').time())
+        print()
+        print()
+        print()
+        print(request.json)
+        opening_time = Literal(datetime.strptime(body['opening_time'], '%H:%M').time())
+        closing_time = Literal(datetime.strptime(body['closing_time'], '%H:%M').time())
         query = SQL("""
         insert into delivery(address, opening_time, closing_time, brand) 
         values({address}, {opening_time}, {closing_time}, {brand})
         returning id, address, opening_time, closing_time, brand
         """).format(closing_time=closing_time, address=Literal(body['address']), opening_time=opening_time, brand=Literal(body['brand']))
 
-        with create_pg_connection() as conn, conn.cursor() as cur:
+        with create_connection_master() as conn, conn.cursor() as cur:
             cur.execute(query)
             delivery = cur.fetchone()
             delivery['opening_time'] = str(delivery['opening_time'])
             delivery['closing_time'] = str(delivery['closing_time'])
 
-        return delivery
+        return delivery, 201
     except Exception as ex:
         logging.error(ex, exc_info=True)
         return '', 400
@@ -93,8 +112,8 @@ def create_delivery():
 def update_delivery():
     try:
         body = request.json
-        opening_time = Literal(datetime.strptime(body['opening_time'], '%H:%M:%S').time())
-        closing_time = Literal(datetime.strptime(body['closing_time'], '%H:%M:%S').time())
+        opening_time = Literal(datetime.strptime(body['opening_time'], '%H:%M').time())
+        closing_time = Literal(datetime.strptime(body['closing_time'], '%H:%M').time())
         query = SQL("""
         update delivery 
         set opening_time = {opening_time}, address = {address}, closing_time = {closing_time}, brand = {brand}
@@ -102,14 +121,14 @@ def update_delivery():
         returning id
         """).format(opening_time=opening_time, closing_time=closing_time, id=Literal(body['id']), address=Literal(body['address']), brand = Literal(body['brand']))
 
-        with create_pg_connection() as conn, conn.cursor() as cur:
+        with create_connection_master() as conn, conn.cursor() as cur:
             cur.execute(query)
             updated_rows = cur.fetchall()
 
         if len(updated_rows) == 0:
             return '', 404
 
-        return '', 204
+        return '', 200
     except Exception as ex:
         logging.error(ex, exc_info=True)
         return '', 400
@@ -126,7 +145,7 @@ def delete_delivery():
         returning id
         """).format(id=Literal(body['id']))
 
-        with create_pg_connection() as conn, conn.cursor() as cur:
+        with create_connection_master() as conn, conn.cursor() as cur:
             cur.execute(query)
             deleted_rows = cur.fetchall()
 
@@ -163,7 +182,7 @@ def brand_search():
     left join get_orders gor on gor.id = c.id where brand = '{brand}'
     group by d.id;""".format(brand=Literal(brand)))
 
-        with create_pg_connection() as conn, conn.cursor() as cur:
+        with create_connection_slave() as conn, conn.cursor() as cur:
             cur.execute(query)
             delivery = cur.fetchone()
             delivery['opening_time'] = str(delivery['opening_time'])
@@ -202,7 +221,7 @@ def working_hours_search():
         left join get_orders gor on gor.id = c.id where {opening_time_from_condition} and {closing_time_from_condition}
         group by d.id;""".format(closing_time=closing_time_to, opening_time=opening_time_from))
 
-        with create_pg_connection() as conn, conn.cursor() as cur:
+        with create_connection_slave() as conn, conn.cursor() as cur:
             cur.execute(query)
             deliveries = cur.fetchall()
             for delivery in deliveries:
@@ -243,7 +262,7 @@ def size_search():
         left join get_orders gor on gor.id = c.id
         group by d.id;""").format(size=Literal(size))
 
-        with create_pg_connection() as conn, conn.cursor() as cur:
+        with create_connection_slave() as conn, conn.cursor() as cur:
             cur.execute(query)
             deliveries = cur.fetchall()
             for delivery in deliveries:
@@ -257,3 +276,6 @@ def size_search():
     except Exception as ex:
         logging.error(ex, exc_info=True)
         return '', 400
+
+if __name__ == '__main__':
+    app.run(debug=True)

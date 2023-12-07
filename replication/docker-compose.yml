@@ -10,7 +10,7 @@ services:
       POSTGRESQL_REPLICATION_USER: ${REPL_USER}
       POSTGRESQL_REPLICATION_PASSWORD: ${REPL_PASSWORD}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${MASTER_PORT}:5432"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -19,3 +19,15 @@ services:
       timeout: 1s
       retries: 30
     restart: unless-stopped
+  flyway:
+    container_name: flyway_gotskina
+    image: flyway/flyway:9.11.0
+    command: -url=jdbc:postgresql://host.docker.internal:${MASTER_PORT}/${POSTGRES_DB} -user=${POSTGRES_USER} -password=${POSTGRES_PASSWORD} -baselineOnMigrate=true migrate
+    volumes:
+      - /home/roi/hw_bd_23/bd/migrations:/flyway/sql
+    depends_on: 
+      postgres:
+        condition: service_healthy
+    
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
