@@ -84,10 +84,6 @@ def get_delivery():
 def create_delivery():
     try:
         body = request.json
-        print()
-        print()
-        print()
-        print(request.json)
         opening_time = Literal(datetime.strptime(body['opening_time'], '%H:%M').time())
         closing_time = Literal(datetime.strptime(body['closing_time'], '%H:%M').time())
         query = SQL("""
