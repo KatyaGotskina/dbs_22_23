@@ -1,0 +1,44 @@
+version: "3.3"
+services:
+  postgres:
+    image: bitnami/postgresql:15.4.0
+    environment:
+      POSTGRESQL_DATABASE: ${POSTGRES_DB}
+      POSTGRESQL_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_REPLICATION_USER: ${REPL_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${REPL_PASSWORD}
+    ports:
+      - "${MASTER_PORT}:5432"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+    restart: unless-stopped
+  flyway:
+    container_name: flyway_gotskina
+    image: flyway/flyway:9.11.0
+    command: -url=jdbc:postgresql://host.docker.internal:${MASTER_PORT}/${POSTGRES_DB} -user=${POSTGRES_USER} -password=${POSTGRES_PASSWORD} -baselineOnMigrate=true migrate
+    volumes:
+      - ./migrations:/flyway/sql
+    depends_on: 
+      - postgres
+    
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  flask:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - ${FLASK_PORT}:5000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    stop_signal: SIGINT
+    depends_on:
+      - flyway
+
