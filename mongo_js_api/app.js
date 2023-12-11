@@ -55,7 +55,7 @@ app.post('/courier/create', async (req, res) => {
 
 app.post('/courier/update', async (req, res) => {
     try {
-        let { vehicle, working_days, name, age, orders } = req.body
+        let { id, vehicle, working_days, name, age, orders } = req.body
         age = new Date(age)
         orders.forEach(order => {
             order.time_of_creation = new Date(order.time_of_creation)

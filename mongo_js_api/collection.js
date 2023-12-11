@@ -5,9 +5,6 @@ db.createCollection('couriers', {
         $jsonSchema: {
             bsonType: 'object',
             properties: {
-                _id: {
-                    bsonType: 'number'
-                },
                 vehicle: {
                     bsonType: 'string'
                 },
@@ -28,7 +25,6 @@ db.createCollection('couriers', {
                     items: {
                         bsonType: 'object',
                         properties: {
-                            _id: { bsonType: 'number' },
                             urgency: { bsonType: 'bool' },
                             comment: { bsonType: 'string' },
                             size: { bsonType: 'string' },
@@ -39,37 +35,33 @@ db.createCollection('couriers', {
                     }
                 }
             },
-            additionalProperties: false,
+            additionalProperties: true,
             required: ['name', 'age']
         }
     }
 })
 
 db.couriers.insertMany([{
-    _id: 1,
     vehicle: 'Мотоцикл',
     working_days: ['пн', 'ср', 'чт', 'вс'],
     name: 'Данил Олегович',
     age: new Date('01-03-1990'),
     orders: [
-        {   
-            _id: 1, 
+        {
             urgency: true, 
             comment: 'put the order in front of the door', 
             size: 'large', package: 'box', 
             time_of_creation: new Date('January 8, 2023 13:02:15 GMT+0200'), 
             delivered: new Date ('January 8, 2023 14:34:17 GMT+0200')
         },
-        {   
-            _id: 2, 
+        {
             urgency: true, 
             comment: 'Позвоните за 5 минут', 
             size: 'small', package: 'plastic bag', 
             time_of_creation: new Date('March 13, 2022 02:13:07 GMT+0200'), 
             delivered: new Date ('March 14, 2022 12:25:36 GMT+0200')
         },
-        { 
-            _id: 3, 
+        {
             urgency: true, 
             size: 'big', 
             package: 'polyethylene', 
@@ -79,14 +71,12 @@ db.couriers.insertMany([{
     ]
 },
 {
-    _id: 2,
     vehicle: 'Велосипед',
     working_days: ['вт', 'ср', 'пт', 'сб'],
     name: 'Антон Александрович',
     age: new Date('11-07-1996'),
     orders: [
-        { 
-            _id: 4, 
+        {
             urgency: true, 
             comment: 'Прошу доставить с максимальной сохранностью', 
             size: 'tiny', 
@@ -95,7 +85,6 @@ db.couriers.insertMany([{
             delivered: new Date('May 26, 2023 10:01:38 GMT+0200')
         },
         { 
-            _id: 5, 
             urgency: true, 
             size: 'small', 
             package: 'box', 
