@@ -1,0 +1,3 @@
+FROM python:3.9
+WORKDIR /pgsync
+RUN pip install 'pgsync==3.0.0'

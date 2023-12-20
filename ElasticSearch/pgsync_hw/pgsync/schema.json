@@ -1,0 +1,345 @@
+[
+    {
+        "database": "postgres",
+        "index": "courier",
+        "setting": {
+            "analysis": {
+                "filter": {
+                    "russian_stop": {
+                        "type": "stop",
+                        "stopwords": "_russian_"
+                    },
+                    "russian_stemmer": {
+                        "type": "stemmer",
+                        "language": "russian"
+                    }
+                },
+                "analyzer": {
+                    "my_ru_analyzer": {
+                        "tokenizer": "standard",
+                        "filter": ["lowercase", "russian_stop", "russian_stemmer"]
+                    }
+                }
+            }
+        },
+        "nodes": {
+            "table": "courier",
+            "schema": "public",
+            "columns": [],
+            "transform": {
+                "mapping": {
+                    "id": {
+                        "type": "keyword"
+                    },
+                    "vehicle": {
+                        "type": "text",
+                        "analyzer" : "my_ru_analyzer"
+                    },
+                    "name": {
+                        "type": "keyword"
+                    },
+                    "age": {
+                        "type": "date"
+                    }
+                }
+            },
+            "children": [
+                {
+                    "table": "delivery",
+                    "schema": "public",
+                    "columns": [],
+                    "transform": {
+                        "mapping": {
+                            "id": {
+                                "type": "keyword"
+                            },
+                            "address": {
+                                "type": "keyword"
+                            },
+                            "opening_time": {
+                                "type": "keyword"
+                            },
+                            "closing_time": {
+                                "type": "keyword"
+                            }, 
+                            "brand" : {
+                                "type": "keyword"
+                            }
+                            }
+                        },
+                    "relationship": {
+                        "variant": "object",
+                        "type": "one_to_many",
+                        "through_tables": ["delivery_to_courier"]
+                    }
+                },
+                {
+                    "table": "orders",
+                    "schema": "public",
+                    "columns": [],
+                    "transform": {
+                        "mapping": {
+                            "id": {
+                                "type": "keyword"
+                            },
+                            "urgency": {
+                                "type": "boolean"
+                            },
+                            "comment": {
+                                "type": "keyword"
+                            },
+                            "size": {
+                                "type": "keyword"
+                            },
+                            "package": {
+                                "type": "keyword"
+                            },
+                            "time_of_creation": {
+                                "type": "date"
+                            },
+                            "delivered": {
+                                "type": "date"
+                            }
+                        }
+                    },
+                    "relationship": {
+                        "variant": "object",
+                        "type": "one_to_many"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "database": "postgres",
+        "index": "orders",
+        "setting": {
+            "analysis": {
+                "filter": {
+                    "russian_stop": {
+                        "type": "stop",
+                        "stopwords": "_russian_"
+                    },
+                    "russian_stemmer": {
+                        "type": "stemmer",
+                        "language": "russian"
+                    },
+                    "synonym": {
+                        "type": "synonym",
+                        "synonyms": [
+                            "small => tiny",
+                            "large => big"
+                        ]
+                    }
+                },
+                "analyzer": {
+                    "sinonim_analyzer": {
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "russian_stop",
+                            "russian_stemmer",
+                            "synonym"
+                        ]
+                    }
+                }
+            }
+        },
+        "nodes": {
+            "table": "orders",
+            "schema": "public",
+            "columns": [],
+            "transform": {
+                "mapping": {
+                    "id": {
+                        "type": "keyword"
+                    },
+                    "urgency": {
+                        "type": "boolean"
+                    },
+                    "comment": {
+                        "type": "keyword"
+                    },
+                    "size": {
+                        "type": "text",
+                        "analyzer": "sinonim_analyzer"
+                    },
+                    "package": {
+                        "type": "keyword"
+                    },
+                    "time_of_creation": {
+                        "type": "date"
+                    },
+                    "delivered": {
+                        "type": "date"
+                    }
+                }
+            },
+            "children": [
+                {
+                    "table": "delivery",
+                    "schema": "public",
+                    "columns": [],
+                    "transform": {
+                        "mapping": {
+                            "id": {
+                                "type": "keyword"
+                            },
+                            "address": {
+                                "type": "keyword"
+                            },
+                            "opening_time": {
+                                "type": "keyword"
+                            },
+                            "closing_time": {
+                                "type": "keyword"
+
+                            }, 
+                            "brand" : {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "relationship": {
+                        "variant": "object",
+                        "type": "one_to_one"
+                    }
+                },
+                {
+                    "table": "courier",
+                    "schema": "public",
+                    "columns": [],
+                    "transform": {
+                        "mapping": {
+                            "id": {
+                                "type": "keyword"
+                            },
+                            "vehicle": {
+                                "type": "keyword"
+                            },
+                            "name": {
+                                "type": "keyword"
+                            },
+                            "age": {
+                                "type": "date"
+                            }
+                        }
+                    },
+                    "relationship": {
+                        "variant": "object",
+                        "type": "one_to_one"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "database": "postgres",
+        "index": "delivery",
+        "setting": {
+            "analysis": {
+                "filter": {
+                    "ngram_filter": {
+                        "type": "edge_ngram",
+                        "min_gram": 1,
+                        "max_gram": 5
+                    }
+                },
+                "analyzer": {
+                    "ngram_analyzer": {
+                        "type": "custom",
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "ngram_filter"
+                        ]
+                    }
+                }
+            }
+        },
+        "nodes": {
+            "table": "delivery",
+            "schema": "public",
+            "transform": {
+                "mapping": {
+                    "id": {
+                        "type": "keyword"
+                    },
+                    "address": {
+                        "type": "keyword"
+                    },
+                    "opening_time": {
+                        "type": "keyword"
+                    },
+                    "closing_time": {
+                        "type": "keyword"
+                    }, 
+                    "brand" : {
+                        "type": "text",
+                        "analyzer": "ngram_analyzer"
+                    }
+                }
+            },
+            "children": [
+                {
+                    "table": "courier",
+                    "schema": "public",
+                    "transform": {
+                        "mapping": {
+                            "id": {
+                                "type": "keyword"
+                            },
+                            "vehicle": {
+                                "type": "keyword"
+                            },
+                            "name": {
+                                "type": "keyword"
+                            },
+                            "age": {
+                                "type": "date"
+                            }
+                        }
+                    },
+                    "relationship": {
+                        "variant": "object",
+                        "type": "one_to_many",
+                        "through_tables": ["delivery_to_courier"]
+                    }
+                },
+                {
+                    "table": "orders",
+                    "schema": "public",
+                    "transform": {
+                        "mapping": {
+                            "id": {
+                                "type": "keyword"
+                            },
+                            "urgency": {
+                                "type": "boolean"
+                            },
+                            "comment": {
+                                "type": "keyword"
+                            },
+                            "size": {
+                                "type": "keyword"
+                            },
+                            "package": {
+                                "type": "keyword"
+                            },
+                            "time_of_creation": {
+                                "type": "date"
+                            },
+                            "delivered": {
+                                "type": "date"
+                            }
+                        }
+                    },
+                    "relationship": {
+                        "variant": "object",
+                        "type": "one_to_many"
+                    }
+                }
+            ]
+        }
+    }
+]

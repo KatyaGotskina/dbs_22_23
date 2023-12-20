@@ -1,0 +1,5 @@
+FROM bitnami/postgresql:15.5.0
+
+RUN echo "listen_addresses = '*'" >> /opt/bitnami/postgresql/conf/conf.d/extended.conf
+RUN echo "max_replication_slots = 10" >> /opt/bitnami/postgresql/conf/conf.d/extended.conf
+RUN echo "wal_level = logical" >> /opt/bitnami/postgresql/conf/conf.d/extended.conf

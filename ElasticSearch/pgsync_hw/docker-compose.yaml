@@ -1,0 +1,93 @@
+version: '3.8'
+services:
+    postgres:
+        container_name: postgres
+        build:
+            context: .
+            dockerfile: ./dockerfile-pg
+        environment:
+            POSTGRESQL_DATABASE: ${POSTGRES_DB}
+            POSTGRESQL_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+            POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD}
+        ports:
+            - '${POSTGRES_PORT}:5432'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        healthcheck:
+            test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres"]
+            interval: 1s
+            timeout: 1s
+            retries: 30
+        restart: unless-stopped
+    redis:
+        container_name: redis
+        image: redis:7.0.0
+        command: >
+            --requirepass ${REDIS_PASSWORD}
+        ports:
+            - '${REDIS_PORT}:6379'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 1s
+            timeout: 1s
+            retries: 30
+        restart: unless-stopped
+    flyway:
+        image: flyway/flyway:10.1.0
+        command: -url=jdbc:postgresql://host.docker.internal:${POSTGRES_PORT}/${POSTGRES_DB} -user=${POSTGRES_USER} -password=${POSTGRES_PASSWORD} migrate
+        volumes:
+            - ./migrations:/flyway/sql
+        depends_on:
+            postgres:
+                condition: service_healthy
+            elasticsearch:
+                condition: service_healthy
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+    elasticsearch:
+        container_name: elasticsearch
+        image: bitnami/elasticsearch:8.11.1
+        ports:
+            - '${ELASTIC_PORT}:9200'
+        environment:
+            - xpack.security.enabled=false
+            - network.host=127.0.0.1
+            - http.host=0.0.0.0
+        healthcheck:
+            test: curl -u elastic:elastic -s -f elasticsearch:9200/_cat/health >/dev/null || exit 1
+            interval: 1s
+            retries: 100
+    pgsync:
+        container_name: pgsync
+        build:
+            context: ./pgsync
+            dockerfile: dockerfile-pgsync
+        volumes:
+            - ./pgsync/schema.json:/pgsync/schema.json
+        command: >
+            sh -c "bootstrap --config schema.json && pgsync --config schema.json -d"
+        sysctls:
+            - net.ipv4.tcp_keepalive_time=200
+            - net.ipv4.tcp_keepalive_intvl=200
+            - net.ipv4.tcp_keepalive_probes=5
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            elasticsearch:
+                condition: service_healthy
+            flyway:
+                condition: service_completed_successfully
+        environment:
+            - PG_USER=${POSTGRES_USER}
+            - PG_HOST=postgres
+            - PG_PASSWORD=${POSTGRES_PASSWORD}
+            - LOG_LEVEL=DEBUG
+            - ELASTICSEARCH_PORT=9200
+            - ELASTICSEARCH_SCHEME=http
+            - ELASTICSEARCH_HOST=elasticsearch
+            - REDIS_HOST=redis
+            - REDIS_AUTH=${REDIS_PASSWORD}
