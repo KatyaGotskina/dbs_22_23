@@ -1,14 +1,31 @@
 import express from 'express'
 import bodyParser from 'body-parser'
 import { MongoClient, ObjectId } from 'mongodb'
+import { createClient } from 'redis'
 import { config } from 'dotenv'
+import winston from 'winston'
+import LokiTransport from 'winston-loki'
+
 
 config()
 
-const { MONGO_USER, MONGO_PASSWORD, MONGO_HOST, MONGO_PORT, MONGO_DB, EXPRESS_PORT } = process.env
+const { MONGO_USER, MONGO_PASSWORD, MONGO_HOST, MONGO_PORT, MONGO_DB, EXPRESS_PORT, REDIS_HOST, REDIS_PORT, LOKI_HOST, LOKI_PORT } = process.env
 
 const client = new MongoClient(`mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}`)
 const db = client.db(MONGO_DB)
+
+const logger = winston.createLogger({
+    level: 'debug',
+    format: winston.format.json(),
+    transports: [
+        new winston.transports.Console(),
+        new LokiTransport({ host: `http://${LOKI_HOST}:${LOKI_PORT}`, json: true, labels: { job: 'node-express' } })
+    ]
+})
+
+const redisClient = await createClient({ url: `redis://${REDIS_HOST}:${REDIS_PORT}` })
+    .on('error', err => logger.error('Redis Client Error', err))
+    .connect()
 
 const app = express()
 app.use(bodyParser.json())
@@ -18,16 +35,37 @@ app.get('/', (_, res) => {
     res.send('')
 })
 
-app.get('/couriers', async (_, res) => {
+app.get('/couriers', async (req, res) => {
     try {
-        const couriers = await db
-            .collection('couriers')
-            .find({}, { limit: 10 })
-            .toArray()
+        const vehicle = req.query['vehicle']
 
-        res.json(couriers)
+        if ( vehicle == null) { 
+            logger.debug(`Couriers all data requested`)
+            const all_couriers = await db
+                .collection('couriers')
+                .find({}, { limit: 10 })
+                .toArray()
+
+            return res.json(all_couriers)
+        }
+        else {
+            logger.debug(`Couriers with vehicle ${vehicle} requested`)
+            const cachedMovies = JSON.parse(await redisClient.get('courier:' + vehicle))
+            if (cachedMovies) {
+                logger.debug(`Got couriers with vehicle ${vehicle} from cache`)
+                return res.json(cachedMovies)
+            }
+            logger.debug(`No couriers with vehicle ${vehicle} in cache`)
+            const couriers = await db
+                .collection('couriers')
+                .find({ vehicle: vehicle }, { limit: 10 })
+                .toArray()
+            redisClient.set('courier:' + vehicle, JSON.stringify(couriers), { EX: 10 })
+            return res.json(couriers)
+            }
+
     } catch (err) {
-        console.log(err)
+        logger.error(err)
         res.sendStatus(400)
     }
 })
@@ -48,7 +86,7 @@ app.post('/courier/create', async (req, res) => {
 
         res.json({ id: insertedId })
     } catch (err) {
-        console.log(err)
+        logger.error(err)
         res.sendStatus(400)
     }
 })
@@ -75,7 +113,7 @@ app.post('/courier/update', async (req, res) => {
             res.sendStatus(204)
         }
     } catch (err) {
-        console.log(err)
+        logger.error(err)
         res.sendStatus(400)
     }
 })
@@ -91,13 +129,13 @@ app.delete('/courier/delete', async (req, res) => {
             res.sendStatus(204)
         }
     } catch (err) {
-        console.log(err)
+        logger.error(err)
         res.sendStatus(400)
     }
 })
 
 app.listen(appPort, () => {
-    console.log(`app listening on port ${appPort}`)
+    logger.info(`express listening on port ${EXPRESS_PORT}`)
 })
 
 

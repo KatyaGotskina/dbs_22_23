@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 1s
+  evaluation_interval: 1s
+
+scrape_configs:
+  - job_name: 'node-express'
+    static_configs:
+      # если нужно изменить порт express, то 31005 нужно изменить на нужный, т.к. prometheus не поддерживает environment variables
+      - targets: ['host.docker.internal:6044']

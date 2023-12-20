@@ -1,0 +1,65 @@
+version: '3.9'
+
+services:
+    prometheus:
+        image: prom/prometheus:v2.48.1
+        env_file: .env
+        volumes:
+            - ./prometheus:/etc/prometheus
+        ports:
+            - '${PROMETHEUS_PORT}:9090'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+
+    loki:
+        image: grafana/loki:main-d048e93
+        ports:
+            - '${LOKI_PORT}:3100'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+
+    promtail:
+        image: grafana/promtail:main-be71a80
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+
+    grafana:
+        image: grafana/grafana:10.2.2
+        volumes:
+            - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/main.yaml
+            - ./grafana/dashboards:/var/lib/grafana/dashboards
+        ports:
+            - '${GRAFANA_PORT}:3000'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+
+    mongodb:
+        image: mongo:5.0.23
+        container_name: mongodb
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
+            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+        ports:
+            - '${MONGO_PORT}:27017'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+
+    redis:
+        image: redis:7.2.3
+        ports:
+            - '${REDIS_PORT}:6379'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+
+    express:
+        container_name: express
+        build: .
+        env_file: .env
+        environment:
+            - LOKI_HOST=host.docker.internal
+            - MONGO_HOST=host.docker.internal
+            - REDIS_HOST=host.docker.internal
+        ports:
+            - '${EXPRESS_PORT}:${EXPRESS_PORT}'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
