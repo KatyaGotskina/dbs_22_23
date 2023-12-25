@@ -127,8 +127,8 @@
                     "synonym": {
                         "type": "synonym",
                         "synonyms": [
-                            "small => tiny",
-                            "large => big"
+                            "маленький => tiny",
+                            "большой => big"
                         ]
                     }
                 },

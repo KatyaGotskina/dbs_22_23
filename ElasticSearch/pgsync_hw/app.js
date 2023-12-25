@@ -29,7 +29,9 @@ app.get('/courier', async (req, res) => {
                 query: {
                     match: {
                         vehicle: {
-                            query: vehicle
+                            query: vehicle,
+                            fuzziness: 1,
+                            "minimum_should_match": 2
                         }
                     }
                 }
