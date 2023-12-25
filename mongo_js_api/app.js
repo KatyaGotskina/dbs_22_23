@@ -5,6 +5,9 @@ import { createClient } from 'redis'
 import { config } from 'dotenv'
 import winston from 'winston'
 import LokiTransport from 'winston-loki'
+import { collectDefaultMetrics, Counter, register } from 'prom-client'
+import promBundle from 'express-prom-bundle'
+
 
 
 config()
@@ -23,12 +26,33 @@ const logger = winston.createLogger({
     ]
 })
 
+collectDefaultMetrics({ register })
+const metricsMiddleware = promBundle({
+    includeMethod: true,
+    includePath: true,
+    metricType: 'summary',
+    percentiles: []
+})
+
+const courierReqCounter = new Counter({
+    name: 'courier_requests_counter',
+    help: 'Requests of all couriers data',
+    labelNames: ['table']
+})
+
+const vehicleReqCounter = new Counter({
+    name: 'search_by_vehicle_requests_counter',
+    help: 'Requests of couriers by vehicle',
+    labelNames: ['by_vehicle']
+})
+
 const redisClient = await createClient({ url: `redis://${REDIS_HOST}:${REDIS_PORT}` })
     .on('error', err => logger.error('Redis Client Error', err))
     .connect()
 
 const app = express()
 app.use(bodyParser.json())
+app.use(metricsMiddleware)
 const appPort = EXPRESS_PORT
 
 app.get('/', (_, res) => {
@@ -46,10 +70,12 @@ app.get('/couriers', async (req, res) => {
                 .find({}, { limit: 10 })
                 .toArray()
 
+            courierReqCounter.labels({ table: 'couriers' }).inc()
             return res.json(all_couriers)
         }
         else {
             logger.debug(`Couriers with vehicle ${vehicle} requested`)
+            vehicleReqCounter.labels({ by_vehicle: vehicle }).inc()
             const cachedMovies = JSON.parse(await redisClient.get('courier:' + vehicle))
             if (cachedMovies) {
                 logger.debug(`Got couriers with vehicle ${vehicle} from cache`)
@@ -133,6 +159,17 @@ app.delete('/courier/delete', async (req, res) => {
         res.sendStatus(400)
     }
 })
+
+app.get('/metrics', async (_, res) => {
+    try {
+        res.set('Content-Type', register.contentType)
+        res.end(await register.metrics())
+    } catch (ex) {
+        logger.error(err)
+        res.sendStatus(500)
+    }
+})
+
 
 app.listen(appPort, () => {
     logger.info(`express listening on port ${EXPRESS_PORT}`)
